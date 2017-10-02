@@ -9,6 +9,7 @@
 tmp_directory=/tmp/prosody/
 junk_to_delete=$tmp_directory/accounts_to_delete.txt
 
+host="magicbroccoli.de"
 # maximum timeframe for accounts registered but not logged in
 # needs to be in the syntax 1day 2weeks 3months 4years
 unused_accounts_timeframe="14days"
@@ -49,7 +50,7 @@ clearcomp()
 
 		#remove all tmp files and variables for privacy reasons
 		rm -f "$junk_to_delete"
-		unset unused_accounts_timeframe old_accounts_timeframe mam_message_live enable_mam_clearing prosody_db_user prosody_db_password junk_to_delete
+		unset unused_accounts_timeframe old_accounts_timeframe host mam_message_live enable_mam_clearing prosody_db_user prosody_db_password junk_to_delete
 	fi
 
 	# remove the temp files
@@ -82,13 +83,13 @@ catch_configtest()
 filter_unused_accounts()
 {
 	# filter all registered but not logged in accounts older then $unused_accounts_timeframe
-	prosodyctl mod_list_inactive magicbroccoli.de "$unused_accounts_timeframe" event | grep registered | sed 's/registered//g' | sed -e 's/^/prosodyctl deluser /' >> $junk_to_delete
+	prosodyctl mod_list_inactive $host "$unused_accounts_timeframe" event | grep registered | sed 's/registered//g' | sed -e 's/^/prosodyctl deluser /' >> $junk_to_delete
 }
 
 filter_old_accounts()
 {
 	# filter all inactive accounts older then $old_accounts_timeframe
-	prosodyctl mod_list_inactive magicbroccoli.de "$old_accounts_timeframe" | sed -e 's/^/prosodyctl deluser /' >> $junk_to_delete
+	prosodyctl mod_list_inactive $host "$old_accounts_timeframe" | sed -e 's/^/prosodyctl deluser /' >> $junk_to_delete
 }
 
 filter_mam_messages()
