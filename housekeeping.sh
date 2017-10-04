@@ -16,7 +16,7 @@ junk_to_delete=$tmp_directory/accounts_to_delete.txt
 # external config file
 configfile=$tmp_directory/.user.config
 configfile_secured=$tmp_directory/tmp.config
-backupconf=/var/backup/prosody_housekeeping.user.config
+backupconf=/var/backups/prosody_housekeeping.user.config
 
 ###### PRE RUN FUNCTION SECTION ######
 prerun_check()
@@ -53,7 +53,7 @@ prerun_check()
 			exit 10
 		fi
 	else
-		# copy config file to /var/backup
+		# copy config file to /var/backups
 		cp "$configfile" "$backupconf"
 	fi
 
