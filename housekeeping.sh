@@ -4,57 +4,70 @@
 # housecleaning script for prosody
 #
 
+# // TODO
+# 1. delete deleted users mam content
+# 2. delete Spectrum2 old users
+
 ###### CONFIGURATION ######
 # configuration variables
 tmp_directory=/tmp/prosody/
 junk_to_delete=$tmp_directory/accounts_to_delete.txt
 
-host="magicbroccoli.de"
-# maximum timeframe for accounts registered but not logged in
-# needs to be in the syntax 1day 2weeks 3months 4years
-unused_accounts_timeframe="14days"
-# maxium timeframe for accounts since last login
-old_accounts_timeframe="1year"
-
-# maximum age of mod_mam messags stored in the database
-enable_mam_clearing=false
-# needs to be in mysql syntax 1 DAY 2 MONTH 3 YEAR
-mam_message_live="2 MONTH"
-
-# prosody mysql login credentials
-prosody_db_user="prosody"
-prosody_db_password="super_secret-password1337"
-
-# http upload path
-http_upload_path="/var/lib/prosody/http_upload"
-# http upload lifetime in days
-http_upload_expire="31"
+# external config file
+configfile=$tmp_directory/.user.config
+configfile_secured=$tmp_directory/tmp.config
+backupconf=/var/backup/prosody_housekeeping.user.config
 
 ###### PRE RUN FUNCTION SECTION ######
 prerun_check()
 {
+	# check if all commands needed to run are present in $PATH
+	needed_commands="printf mkdir ls echo grep cat date prosodyctl"
+	missing_counter=0
+	for needed_command in $needed_commands; do
+		if ! hash "$needed_command" >/dev/null 2>&1 ; then
+			printf "Command not found in PATH: %s\\n" "$needed_command" >&2
+			((missing_counter++))
+		fi
+	done
+
+	if ((missing_counter > 0)); then
+		printf "Minimum %d commands are missing in PATH, aborting\\n" "$missing_counter" >&2
+		exit 11
+	fi
+
 	#check if tmp directory is present if not create it
 	if [ ! -d "$tmp_directory" ]; then
 		mkdir -p $tmp_directory
 	fi
 
-	# clear env
-	clearcomp
-}
-
-clearcomp()
-{
-	if [ "$1" = "-all" ]; then
-		# run the created script to delete the selected accounts
-		bash $junk_to_delete
-
-		#remove all tmp files and variables for privacy reasons
-		rm -f "$junk_to_delete"
-		unset unused_accounts_timeframe old_accounts_timeframe host mam_message_live enable_mam_clearing prosody_db_user prosody_db_password junk_to_delete
+	#first run check
+	# check for presents of the configfile if not exit
+	if [ ! -f "$configfile" ]; then
+		if [ -f "$backupconf" ]; then
+			echo -e "no config inside $tmp_directory using $backupconf"
+			cp "$backupconf" "$configfile"
+		else
+			#config file is not present
+			echo -e "no config file has been set. copy the sample config file to $configfile"
+			exit 10
+		fi
+	else
+		# copy config file to /var/backup
+		cp "$configfile" "$backupconf"
 	fi
 
-	# remove the temp files
-	rm -f "$junk_to_delete"
+	# check if config file contains something we don't want
+	if	grep -E -q -v '^#|^[^ ]*=[^;]*' "$configfile"; then
+		grep -E '^#|^[^ ]*=[^;&]*'  "$configfile" > "$configfile_secured"
+		configfile="$configfile_secured"
+	fi
+
+	# source the config file
+	source  "$configfile"
+
+	# clear env
+	clearcomp
 }
 
 catch_help()
@@ -115,7 +128,6 @@ filter_expired_http_uploads()
 	find $http_upload_path/* -maxdepth 0 -type d -mtime +$http_upload_expire | sed -e 's/^/rm -rf /' >> $junk_to_delete
 }
 
-###### General Functions ######
 display_help()
 {
 	echo -e "Prosody housecleaning script"
@@ -123,6 +135,21 @@ display_help()
 	echo -e "1. Filter registered but unused accounts from Database \n2. Filter Account that have been inactive for too long\n3. Remove expired Messaged from Prosodys MAM from the Database\n4. Remove the selected Accounts\n"
 	echo -e "There are some major variables needed to be set:"
 	echo -e "1. maximum age of registered but unused accounts\n2. maximum age of unused accounts\n3. maximum age of mod_mam records\n4. Prosodys Database login credentials"
+}
+###### General Functions ######
+clearcomp()
+{
+	if [ "$1" = "-all" ]; then
+		# run the created script to delete the selected accounts
+		bash $junk_to_delete
+
+		#remove all tmp files and variables for privacy reasons
+		rm -f "$junk_to_delete"
+		unset unused_accounts_timeframe old_accounts_timeframe host mam_message_live enable_mam_clearing prosody_db_user prosody_db_password junk_to_delete
+	fi
+
+	# remove the temp files
+	rm -f "$junk_to_delete"
 }
 
 ###### MAIN CODE SECTION ######
