@@ -9,7 +9,7 @@
 
 ###### CONFIGURATION ######
 # configuration variables
-tmp_directory=/tmp/prosody/
+tmp_directory=/tmp/prosody
 logfile=/var/log/prosody/housekeeping.log
 unused_accounts=$tmp_directory/unused_accounts.txt
 old_accounts=$tmp_directory/old_accounts.txt
@@ -31,13 +31,13 @@ prerun_check()
 	missing_counter=0
 	for needed_command in $needed_commands; do
 		if ! hash "$needed_command" >/dev/null 2>&1 ; then
-			log_to_file $(printf "Command not found in PATH: %s\\n" "$needed_command" >&2)
+			log_to_file "$(printf "Command not found in PATH: %s\\n" "$needed_command" >&2)"
 			((missing_counter++))
 		fi
 	done
 
 	if ((missing_counter > 0)); then
-		log_to_file $(printf "Minimum %d commands are missing in PATH, aborting\\n" "$missing_counter" >&2)
+		log_to_file "$(printf "Minimum %d commands are missing in PATH, aborting\\n" "$missing_counter" >&2)"
 		exit 11
 	fi
 
@@ -177,23 +177,31 @@ clearcomp()
 
 prepare_execution()
 {
-	# prepare selected user list to be removed
-	sed -e 's/^/prosodyctl deluser /' "$unused_accounts $old_accounts" > "$prepared_list"
+	if [ -s $unused_accounts ] || [ -s $old_accounts ]; then
+		# prepare selected user list to be removed
+		sed -e 's/^/prosodyctl deluser /' "$unused_accounts" "$old_accounts" > "$prepared_list"
 
-	# prepare folder list to be removed
-	sed -e 's/^/rm -rf /' "$junk_to_delete" >> "$prepared_list"
+		if [ "$logging" = "true" ]; then
+			# read the files line by line and prepend and append some info
+			while read -r line; do
+				log_to_file "$(echo -e "$line" | sed -e 's/^/Registration expired: /')"
+			done < "$unused_accounts"
+			while read -r line; do
+				log_to_file "$(echo -e "$line" | sed -e 's/^/Account expired: /')"
+			done < "$old_accounts"
+		fi
+	fi
 
-	if [ "$logging" = "true" ]; then
-		# read the files line by line and prepend and append some info
-		while read line; do
-			log_to_file "$(echo -e "$line" | sed -e 's/^/Registration expired: /')"
-		done < "$unused_accounts"
-		while read line; do
-			log_to_file "$(echo -e "$line" | sed -e 's/^/Account expired: /')"
-		done < "$old_accounts"
-		while read line; do
-			log_to_file "$(echo -e "$line" | sed -e 's/^/Folder: "/' | sed 's/$/" has been marked for removal./')"
-		done < "$old_accounts"
+	if [ -s $junk_to_delete ]; then
+		# prepare folder list to be removed
+		sed -e 's/^/rm -rf /' "$junk_to_delete" >> "$prepared_list"
+
+		if [ "$logging" = "true" ]; then
+			# read the files line by line and prepend and append some info
+			while read -r line; do
+				log_to_file "$(echo -e "$line" | sed -e 's/^/Folder: "/' | sed 's/$/" has been marked for removal./')"
+			done < "$old_accounts"
+		fi
 	fi
 }
 
