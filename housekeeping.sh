@@ -165,14 +165,11 @@ clearcomp()
 	if [ "$1" = "-removal" ]; then
 		# run the created script to delete the selected accounts
 		bash "$prepared_list"
-
-		#remove all tmp files and variables for privacy reasons
-		rm -f "$unused_accounts" "$old_accounts" "$prepared_list" "$junk_to_delete"
-		unset unused_accounts_timeframe old_accounts_timeframe host mam_message_live enable_mam_clearing prosody_db_user prosody_db_password accounts_to_delete prepared_list
 	fi
 
 	# remove the temp files
-	rm -f "$accounts_to_delete"
+	unset unused_accounts_timeframe old_accounts_timeframe host mam_message_live enable_mam_clearing prosody_db_user prosody_db_password accounts_to_delete prepared_list
+	rm -f "$unused_accounts" "$old_accounts" "$prepared_list" "$junk_to_delete"
 }
 
 prepare_execution()
