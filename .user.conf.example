@@ -1,15 +1,24 @@
 #
 #### EXAMPLE CONFIG FILE ####
 #
+# log results to file
+logging=true
+#
 # define hosts to run this script on
 host="magicbroccoli.de"
 #
+## Removal of registered but unused accounts
+enable_unused=true
 # maximum timeframe for accounts registered but not logged in
 # needs to be in the syntax 1day 2weeks 3months 4years
 unused_accounts_timeframe="14days"
+#
+## Removal of old Accounts
+enable_old=true
 # maxium timeframe for accounts since last login
 old_accounts_timeframe="1year"
 #
+## Removal of expired mod_mam Messages from Archive
 # maximum age of mod_mam messags stored in the database
 enable_mam_clearing=false
 # needs to be in mysql syntax 1 DAY 2 MONTH 3 YEAR
@@ -19,6 +28,8 @@ mam_message_live="2 MONTH"
 prosody_db_user="prosody"
 prosody_db_password="super_secret-password1337"
 #
+## Removal of expired http_upload files/folders
+enable_httpupload=true
 # http upload path
 http_upload_path="/var/lib/prosody/http_upload"
 # http upload lifetime in days
