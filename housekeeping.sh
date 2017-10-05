@@ -184,9 +184,16 @@ prepare_execution()
 	sed -e 's/^/rm -rf /' "$junk_to_delete" >> "$prepared_list"
 
 	if [ "$logging" = "true" ]; then
-		log_to_file $(sed -e 's/^/Registration expired: /' "$unused_accounts")
-		log_to_file $(sed -e 's/^/Account expired: /' "$old_accounts")
-		log_to_file $(sed -e 's/^/Folder: ""/' "$junk_to_delete" | sed 's/$/" has been marked for removal./')
+		# read the files line by line and prepend and append some info
+		while read line; do
+			log_to_file "$(echo -e "$line" | sed -e 's/^/Registration expired: /')"
+		done < "$unused_accounts"
+		while read line; do
+			log_to_file "$(echo -e "$line" | sed -e 's/^/Account expired: /')"
+		done < "$old_accounts"
+		while read line; do
+			log_to_file "$(echo -e "$line" | sed -e 's/^/Folder: "/' | sed 's/$/" has been marked for removal./')"
+		done < "$old_accounts"
 	fi
 }
 
