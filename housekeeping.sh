@@ -31,13 +31,13 @@ prerun_check()
 	missing_counter=0
 	for needed_command in $needed_commands; do
 		if ! hash "$needed_command" >/dev/null 2>&1 ; then
-			log_to_file "Command not found in PATH: %s\\n" "$needed_command" >&2
+			log_to_file $(printf "Command not found in PATH: %s\\n" "$needed_command" >&2)
 			((missing_counter++))
 		fi
 	done
 
 	if ((missing_counter > 0)); then
-		log_to_file "Minimum %d commands are missing in PATH, aborting\\n" "$missing_counter" >&2
+		log_to_file $(printf "Minimum %d commands are missing in PATH, aborting\\n" "$missing_counter" >&2)
 		exit 11
 	fi
 
@@ -50,11 +50,11 @@ prerun_check()
 	# check for presents of the configfile if not exit
 	if [ ! -f "$configfile" ]; then
 		if [ -f "$backupconf" ]; then
-			log_to_file "no config inside $tmp_directory using $backupconf"
+			log_to_file $(echo "no config inside $tmp_directory using $backupconf")
 			cp "$backupconf" "$configfile"
 		else
 			#config file is not present
-			log_to_file "no config file has been set. copy the sample config file to $configfile"
+			log_to_file $(echo "no config file has been set. copy the sample config file to $configfile")
 			exit 10
 		fi
 	else
@@ -184,10 +184,9 @@ prepare_execution()
 	sed -e 's/^/rm -rf /' "$junk_to_delete" >> "$prepared_list"
 
 	if [ "$logging" = "true" ]; then
-		{	sed -e 's/^/Registration expired: /' "$unused_accounts"
-			sed -e 's/^/Account expired: /' "$old_accounts"
-			sed -e 's/^/Folder: ""/' "$junk_to_delete" | sed 's/$/" has been marked for removal./'
-		} >> log_to_file
+		log_to_file $(sed -e 's/^/Registration expired: /' "$unused_accounts")
+		log_to_file $(sed -e 's/^/Account expired: /' "$old_accounts")
+		log_to_file $(sed -e 's/^/Folder: ""/' "$junk_to_delete" | sed 's/$/" has been marked for removal./')
 	fi
 }
 
