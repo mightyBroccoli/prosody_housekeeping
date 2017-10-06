@@ -15,7 +15,7 @@ composition=$tmp_directory/composition.txt
 unused_accounts=$tmp_directory/unused_accounts.txt
 old_accounts=$tmp_directory/old_accounts.txt
 junk_to_delete=$tmp_directory/junk_to_delete.txt
-dbjunk_to_delete=tmp_directory/dbjunk_to_delete.txt
+dbjunk_to_delete=$tmp_directory/dbjunk_to_delete.txt
 prepared_list=$tmp_directory/prepared_list.txt
 
 # external config file
@@ -24,7 +24,7 @@ configfile_secured=$tmp_directory/tmp.config
 backupconf=/var/backups/prosody_housekeeping.user.config
 
 # external ignore file
-ignored_accounts=/etc/prosody/ignored_accounts.txt
+ignored_accounts=$tmp_directory/ignored_accounts.txt
 
 ###### PRE RUN FUNCTION SECTION ######
 prerun_check()
@@ -72,7 +72,7 @@ prerun_check()
 	fi
 
 	# source the config file
-	source  "$configfile"
+	source  $configfile
 
 	# clear env
 	clearcomp
@@ -93,11 +93,15 @@ catch_configtest()
 	if [ "$1" == "-t" ] || [ "$1" == "--configtest" ]; then
 		filter_unused_accounts
 		filter_old_accounts
+		filter_expired_http_uploads
 		filter_mam_messages --test
 
-		echo -e "Registration expired: \\n$unused_accounts\\n"
-		echo -e "Unused Accounts: \\n$old_accounts"
-		echo -e "MAM Messages marked for deletion: \\n$junk_to_delete"
+		echo -e "Registration expired: \\n$(cat $unused_accounts)\\n"
+		echo -e "unused Accounts: \\n$(cat $old_accounts)\\n"
+		echo -e "expired HTTP_Upload Folders: \\n$(cat $junk_to_delete)\\n"
+		if [ "$enable_mam_clearing" = "true" ]; then
+			echo -e "MAM Entries marked for deletion: \\n$(cat $dbjunk_to_delete)\\n"
+		fi
 		exit
 	fi
 }
@@ -121,9 +125,9 @@ filter_unused_accounts()
 	if [ "$enable_unused" = "true" ]; then
 		# filter all registered but not logged in accounts older then $unused_accounts_timeframe
 		prosodyctl mod_list_inactive "$host" "$unused_accounts_timeframe" event | grep registered | sed 's/registered//g' >> "$composition"
-	
-	# filter out ignored accounts
-	filter_ignored_accounts "$composition" "$unused_accounts" 
+
+		# filter out ignored accounts
+		filter_ignored_accounts "$composition" "$unused_accounts"
 	fi
 }
 
@@ -136,8 +140,8 @@ filter_old_accounts()
 		# filter all inactive accounts older then $old_accounts_timeframe
 		prosodyctl mod_list_inactive "$host" "$old_accounts_timeframe" >> "$composition"
 
-	# filter out ignored accounts
-	filter_ignored_accounts "$composition" "$old_accounts" 
+		# filter out ignored accounts
+		filter_ignored_accounts "$composition" "$old_accounts"
 	fi
 }
 
@@ -150,7 +154,7 @@ filter_ignored_accounts()
 
 filter_expired_http_uploads()
 {
-	if [ "$enable_mam_clearing" = "true" ]; then
+	if [ "$enable_http_upload" = "true" ]; then
 		# currently a workaround as the mod_http_uploud is not removing the folder which holds the file
 		find "$http_upload_path"/* -maxdepth 0 -type d -mtime +"$http_upload_expire" >> "$junk_to_delete"
 	fi
@@ -164,12 +168,12 @@ filter_mam_messages()
 		if [ "$1" = "--test" ]; then
 			# this is currently a workaround caused by the extrem slowness of prosodys own clearing mechanism
 			# filter all expired mod_mam messages from archive
-			echo "SELECT * FROM prosody.prosodyarchive WHERE \`when\` < UNIX_TIMESTAMP(DATE_SUB(curdate(),INTERVAL $mam_message_live)) and `store` != "offline";" | mysql -u "$prosody_db_user" -p"$prosody_db_password" &>> "$dbjunk_to_delete"
+			echo "SELECT * FROM prosody.prosodyarchive WHERE \`when\` < UNIX_TIMESTAMP(DATE_SUB(curdate(),INTERVAL $mam_message_live)) and \`store\` != \"offline\";" | mysql -u "$prosody_db_user" -p"$prosody_db_password" &>> "$dbjunk_to_delete"
 			return 1
 		fi
 		# this is currently a workaround caused by the extrem slowness of prosodys own clearing mechanism
 		# delete all expired mod_mam messages from archive
-		echo "DELETE FROM prosody.prosodyarchive WHERE \`when\` < UNIX_TIMESTAMP(DATE_SUB(curdate(),INTERVAL $mam_message_live)) and `store` != "offline";" | mysql -u "$prosody_db_user" -p"$prosody_db_password"
+		echo "DELETE FROM prosody.prosodyarchive WHERE \`when\` < UNIX_TIMESTAMP(DATE_SUB(curdate(),INTERVAL $mam_message_live)) and \`store\` != \"offline\";" | mysql -u "$prosody_db_user" -p"$prosody_db_password"
 	fi
 }
 
@@ -179,12 +183,21 @@ clearcomp()
 	if [ "$1" = "-removal" ]; then
 		# run the created script to delete the selected accounts
 		bash "$prepared_list"
+
+		# removal of tmp files
+		rm -f "$composition" "$unused_accounts" "$old_accounts" "$junk_to_delete" "$dbjunk_to_delete" "$prepared_list"
+
+		# remove variables for privacy reasons	
+		unset tmp_directory logfile composition unused_accounts old_accounts junk_to_delete dbjunk_to_delete prepared_list logging host enable_unused unused_accounts_timeframe enable_old
+		unset old_accounts_timeframe enable_mam_clearing mam_message_live prosody_db_user prosody_db_password enable_http_upload http_upload_path http_upload_expire
+		exit
 	fi
 
-	# remove the temp files
-	unset unused_accounts_timeframe old_accounts_timeframe host mam_message_live enable_mam_clearing prosody_db_user prosody_db_password accounts_to_delete prepared_list
-	rm -f "$unused_accounts" "$old_accounts" "$prepared_list" "$junk_to_delete"
+	# removal of tmp files
+	rm -f "$composition" "$unused_accounts" "$old_accounts" "$junk_to_delete" "$dbjunk_to_delete" "$prepared_list"
+
 }
+
 
 prepare_execution()
 {
@@ -241,12 +254,18 @@ catch_configtest "$@"
 
 # unused accounts filter
 filter_unused_accounts
+
 # old accounts filter
 filter_old_accounts
+
+# filter expired http_upload folders
+filter_expired_http_uploads
+
 # epired mod_mam filter
 filter_mam_messages
 
 # prepare the userlist for removal
 prepare_execution
+
 # final step cleanup
 clearcomp -removal
