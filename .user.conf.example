@@ -29,7 +29,7 @@ prosody_db_user="prosody"
 prosody_db_password="super_secret-password1337"
 #
 ## Removal of expired http_upload files/folders
-enable_httpupload=true
+enable_http_upload=true
 # http upload path
 http_upload_path="/var/lib/prosody/http_upload"
 # http upload lifetime in days

@@ -11,6 +11,7 @@
 # configuration variables
 tmp_directory=/tmp/prosody
 logfile=/var/log/prosody/housekeeping.log
+composition=$tmp_directory/composition.txt
 unused_accounts=$tmp_directory/unused_accounts.txt
 old_accounts=$tmp_directory/old_accounts.txt
 junk_to_delete=$tmp_directory/junk_to_delete.txt
@@ -22,6 +23,8 @@ configfile=$tmp_directory/.user.config
 configfile_secured=$tmp_directory/tmp.config
 backupconf=/var/backups/prosody_housekeeping.user.config
 
+# external ignore file
+ignored_accounts=/etc/prosody/ignored_accounts.txt
 
 ###### PRE RUN FUNCTION SECTION ######
 prerun_check()
@@ -111,28 +114,39 @@ display_help()
 ###### FILTER SECTION ######
 filter_unused_accounts()
 {
+	# clear composition
+	rm -f $composition
+
 	# only run this filter if its enabled
 	if [ "$enable_unused" = "true" ]; then
 		# filter all registered but not logged in accounts older then $unused_accounts_timeframe
-		prosodyctl mod_list_inactive "$host" "$unused_accounts_timeframe" event | grep registered | sed 's/registered//g' >> "$unused_accounts"
-
-		# // TODO
-		# ignore specific users
-		# also remove offline messages and stuff
+		prosodyctl mod_list_inactive "$host" "$unused_accounts_timeframe" event | grep registered | sed 's/registered//g' >> "$composition"
+	
+	# filter out ignored accounts
+	filter_ignored_accounts "$composition" "$unused_accounts" 
 	fi
 }
 
 filter_old_accounts()
 {
+	# clear composition
+	rm -f $composition
+
 	if [ "$enable_old" = "true" ]; then
 		# filter all inactive accounts older then $old_accounts_timeframe
-		prosodyctl mod_list_inactive "$host" "$old_accounts_timeframe" >> "$old_accounts"
+		prosodyctl mod_list_inactive "$host" "$old_accounts_timeframe" >> "$composition"
 
-		# // TODO
-		# ignore specific users
-		# also remove offline messages and stuff
+	# filter out ignored accounts
+	filter_ignored_accounts "$composition" "$old_accounts" 
 	fi
 }
+
+filter_ignored_accounts()
+{
+	# compare $ignored_accounts to selected accounts only parsing those not ignored
+	fgrep -vf $ignored_accounts $1 > $2
+}
+
 
 filter_expired_http_uploads()
 {
@@ -150,12 +164,12 @@ filter_mam_messages()
 		if [ "$1" = "--test" ]; then
 			# this is currently a workaround caused by the extrem slowness of prosodys own clearing mechanism
 			# filter all expired mod_mam messages from archive
-			echo "SELECT * FROM prosody.prosodyarchive WHERE \`when\` < UNIX_TIMESTAMP(DATE_SUB(curdate(),INTERVAL $mam_message_live));" | mysql -u "$prosody_db_user" -p"$prosody_db_password" &>> "$dbjunk_to_delete"
+			echo "SELECT * FROM prosody.prosodyarchive WHERE \`when\` < UNIX_TIMESTAMP(DATE_SUB(curdate(),INTERVAL $mam_message_live)) and `store` != "offline";" | mysql -u "$prosody_db_user" -p"$prosody_db_password" &>> "$dbjunk_to_delete"
 			return 1
 		fi
 		# this is currently a workaround caused by the extrem slowness of prosodys own clearing mechanism
 		# delete all expired mod_mam messages from archive
-		echo "DELETE FROM prosody.prosodyarchive WHERE \`when\` < UNIX_TIMESTAMP(DATE_SUB(curdate(),INTERVAL $mam_message_live));" | mysql -u "$prosody_db_user" -p"$prosody_db_password"
+		echo "DELETE FROM prosody.prosodyarchive WHERE \`when\` < UNIX_TIMESTAMP(DATE_SUB(curdate(),INTERVAL $mam_message_live)) and `store` != "offline";" | mysql -u "$prosody_db_user" -p"$prosody_db_password"
 	fi
 }
 
@@ -174,15 +188,24 @@ clearcomp()
 
 prepare_execution()
 {
-	if [ -s $unused_accounts ] || [ -s $old_accounts ]; then
+	if [ -s $unused_accounts ]; then
 		# prepare selected user list to be removed
-		sed -e 's/^/prosodyctl deluser /' "$unused_accounts" "$old_accounts" > "$prepared_list"
+		sed -e 's/^/prosodyctl deluser /' "$unused_accounts" >> "$prepared_list"
 
 		if [ "$logging" = "true" ]; then
 			# read the files line by line and prepend and append some info
 			while read -r line; do
 				log_to_file "$(echo -e "$line" | sed -e 's/^/Registration expired: /')"
 			done < "$unused_accounts"
+		fi
+	fi
+
+	if [ -s $old_accounts ]; then
+		# prepare selected user list to be removed
+		sed -e 's/^/prosodyctl deluser /'  "$old_accounts" >> "$prepared_list"
+
+		if [ "$logging" = "true" ]; then
+			# read the files line by line and prepend and append some info
 			while read -r line; do
 				log_to_file "$(echo -e "$line" | sed -e 's/^/Account expired: /')"
 			done < "$old_accounts"
