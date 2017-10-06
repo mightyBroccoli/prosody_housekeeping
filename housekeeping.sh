@@ -127,7 +127,10 @@ filter_unused_accounts()
 		prosodyctl mod_list_inactive "$host" "$unused_accounts_timeframe" event | grep registered | sed 's/registered//g' >> "$composition"
 
 		# filter out ignored accounts
-		filter_ignored_accounts "$composition" "$unused_accounts"
+		if [ -f "$ignored_accounts" ]; then
+			# check if there is an ignore file if not skip
+			filter_ignored_accounts "$composition" "$unused_accounts"
+		fi
 	fi
 }
 
@@ -141,7 +144,10 @@ filter_old_accounts()
 		prosodyctl mod_list_inactive "$host" "$old_accounts_timeframe" >> "$composition"
 
 		# filter out ignored accounts
-		filter_ignored_accounts "$composition" "$old_accounts"
+		if [ -f "$ignored_accounts" ]; then
+			# check if there is an ignore file if not skip
+			filter_ignored_accounts "$composition" "$old_accounts"
+		fi
 	fi
 }
 
@@ -150,7 +156,6 @@ filter_ignored_accounts()
 	# compare $ignored_accounts to selected accounts only parsing those not ignored
 	fgrep -vf $ignored_accounts $1 > $2
 }
-
 
 filter_expired_http_uploads()
 {
