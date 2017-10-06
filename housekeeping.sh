@@ -154,7 +154,7 @@ filter_old_accounts()
 filter_ignored_accounts()
 {
 	# compare $ignored_accounts to selected accounts only parsing those not ignored
-	fgrep -vf $ignored_accounts $1 > $2
+	grep -v -F -x -f $ignored_accounts "$1" > "$2"
 }
 
 filter_expired_http_uploads()
