@@ -96,10 +96,20 @@ catch_configtest()
 		filter_expired_http_uploads
 		filter_mam_messages --test
 
-		echo -e "Registration expired: \\n$(cat $unused_accounts)\\n"
-		echo -e "unused Accounts: \\n$(cat $old_accounts)\\n"
-		echo -e "expired HTTP_Upload Folders: \\n$(cat $junk_to_delete)\\n"
-		if [ "$enable_mam_clearing" = "true" ]; then
+		# Only present files if they are present
+		if [ -s $unused_accounts ]; then
+			echo -e "Registration expired: \\n$(cat $unused_accounts)\\n"
+		fi
+
+		if [ -s $old_accounts ]; then
+			echo -e "unused Accounts: \\n$(cat $old_accounts)\\n"
+		fi
+
+		if [ -s $junk_to_delete ]; then
+			echo -e "expired HTTP_Upload Folders: \\n$(cat $junk_to_delete)\\n"
+		fi
+
+		if [ -s $dbjunk_to_delete ]; then
 			echo -e "MAM Entries marked for deletion: \\n$(cat $dbjunk_to_delete)\\n"
 		fi
 		exit
@@ -200,7 +210,6 @@ clearcomp()
 
 	# removal of tmp files
 	rm -f "$composition" "$unused_accounts" "$old_accounts" "$junk_to_delete" "$dbjunk_to_delete" "$prepared_list"
-
 }
 
 
