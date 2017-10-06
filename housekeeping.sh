@@ -50,11 +50,11 @@ prerun_check()
 	# check for presents of the configfile if not exit
 	if [ ! -f "$configfile" ]; then
 		if [ -f "$backupconf" ]; then
-			log_to_file $(echo "no config inside $tmp_directory using $backupconf")
+			log_to_file "$(echo "no config inside $tmp_directory using $backupconf")"
 			cp "$backupconf" "$configfile"
 		else
 			#config file is not present
-			log_to_file $(echo "no config file has been set. copy the sample config file to $configfile")
+			log_to_file "$(echo "no config file has been set. copy the sample config file to $configfile")"
 			exit 10
 		fi
 	else
