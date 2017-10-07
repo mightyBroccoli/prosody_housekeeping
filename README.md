@@ -16,3 +16,7 @@ Start daily with cron or place script as .sh file in the "cron.daily" anacron di
 - Filter formerly used but now unused accounts
 - if enabled delete expired mod_mam entries
 - delete all filtered users
+
+## Ignore List
+Feature to ignore defined user accounts by placing the full JID in the ignore file one per line. There is no need to take care of whitespaces or emtpy lines. The Skript will automatically prepare the list and remove excess whitespaces/empty lines.
+It is possible to ignore both unused registered accounts *and* old accounts. It is not possible to specify an ignore list for each filter. There is only a generel ignore file.
