@@ -49,6 +49,12 @@ prerun_check()
 		mkdir -p "$tmp_directory"
 	fi
 
+	# check if ignore file is present if not create an empty one
+	if [ ! -f "$ignored_accounts" ]; then
+		touch $ignored_accounts
+	fi
+
+
 	#first run check
 	# check for presents of the configfile if not exit
 	if [ ! -f "$configfile" ]; then
@@ -128,43 +134,46 @@ display_help()
 ###### FILTER SECTION ######
 filter_unused_accounts()
 {
-	# clear composition
-	rm -f $composition
-
 	# only run this filter if its enabled
 	if [ "$enable_unused" = "true" ]; then
 		# filter all registered but not logged in accounts older then $unused_accounts_timeframe
-		prosodyctl mod_list_inactive "$host" "$unused_accounts_timeframe" event | grep registered | sed 's/registered//g' >> "$composition"
+		prosodyctl mod_list_inactive "$host" "$unused_accounts_timeframe" event | grep registered | sed 's/registered//g' > "$composition"
 
-		# filter out ignored accounts
-		if [ -f "$ignored_accounts" ]; then
-			# check if there is an ignore file if not skip
-			filter_ignored_accounts "$composition" "$unused_accounts"
+		# if there are any accounts selected
+		if [ -s "$composition" ]; then
+			# filter out ignored accounts
+			filter_ignored_accounts > "$unused_accounts"
 		fi
 	fi
 }
 
 filter_old_accounts()
 {
-	# clear composition
-	rm -f $composition
-
+	# only run this filter if its enabled
 	if [ "$enable_old" = "true" ]; then
-		# filter all inactive accounts older then $old_accounts_timeframe
-		prosodyctl mod_list_inactive "$host" "$old_accounts_timeframe" >> "$composition"
+		# filter all accounts logged out $old_accounts_timeframe in the past
+		prosodyctl mod_list_inactive "$host" "$old_accounts_timeframe" event | grep logout | sed 's/logout//g' | sed 's/ //g' > "$composition"
 
-		# filter out ignored accounts
-		if [ -f "$ignored_accounts" ]; then
-			# check if there is an ignore file if not skip
-			filter_ignored_accounts "$composition" "$old_accounts"
+		# if there are any accounts selected
+		if [ -s "$composition" ]; then
+			# filter out ignored accounts
+			filter_ignored_accounts > "$old_accounts"
 		fi
 	fi
 }
 
 filter_ignored_accounts()
 {
+	# prepare the ignore list
+	# remove spaces and empty lines
+	# sort and remove duplicates
+	sed 's/ //g' $ignored_accounts | sed '/^$/d' | sort | uniq > $tmp_directory/ignored_accounts_prepared.txt
+	
+	# copy newly edited ignore list
+	mv $tmp_directory/ignored_accounts_prepared.txt $ignored_accounts
+
 	# compare $ignored_accounts to selected accounts only parsing those not ignored
-	grep -v -F -x -f $ignored_accounts "$1" > "$2"
+	grep -Fvf $ignored_accounts $composition
 }
 
 filter_expired_http_uploads()
@@ -198,6 +207,10 @@ clearcomp()
 	if [ "$1" = "-removal" ]; then
 		# run the created script to delete the selected accounts
 		bash "$prepared_list"
+
+		# ISSUE #5
+		# workaround to list out all users deleted by this to later be removed from spectrum2 db
+		cat "$old_accounts" >> /var/backups/prosody_housekeeping_spectrum2_accounts.txt
 
 		# removal of tmp files
 		rm -f "$composition" "$unused_accounts" "$old_accounts" "$junk_to_delete" "$dbjunk_to_delete" "$prepared_list"
@@ -268,18 +281,14 @@ catch_configtest "$@"
 
 # unused accounts filter
 filter_unused_accounts
-
 # old accounts filter
 filter_old_accounts
-
 # filter expired http_upload folders
 filter_expired_http_uploads
-
 # epired mod_mam filter
 filter_mam_messages
 
 # prepare the userlist for removal
 prepare_execution
-
 # final step cleanup
 clearcomp -removal
