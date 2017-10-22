@@ -192,12 +192,13 @@ filter_mam_messages()
 		if [ "$1" = "--test" ]; then
 			# this is currently a workaround caused by the extrem slowness of prosodys own clearing mechanism
 			# filter all expired mod_mam messages from archive
-			echo "SELECT * FROM prosody.prosodyarchive WHERE \`when\` < UNIX_TIMESTAMP(DATE_SUB(curdate(),INTERVAL $mam_message_live)) and \`store\` != \"offline\";" | mysql -u "$prosody_db_user" -p"$prosody_db_password" &>> "$dbjunk_to_delete"
-			return 1
+			echo "SELECT * FROM prosody.prosodyarchive WHERE \`when\` < UNIX_TIMESTAMP(DATE_SUB(curdate(),INTERVAL $mam_message_live)) and \`store\` LIKE \"archive%\";" | mysql -u "$prosody_db_user" -p"$prosody_db_password" &>> "$dbjunk_to_delete"
+			return 0
 		fi
 		# this is currently a workaround caused by the extrem slowness of prosodys own clearing mechanism
 		# delete all expired mod_mam messages from archive
-		echo "DELETE FROM prosody.prosodyarchive WHERE \`when\` < UNIX_TIMESTAMP(DATE_SUB(curdate(),INTERVAL $mam_message_live)) and \`store\` != \"offline\";" | mysql -u "$prosody_db_user" -p"$prosody_db_password"
+		echo "DELETE FROM prosody.prosodyarchive WHERE \`when\` < UNIX_TIMESTAMP(DATE_SUB(curdate(),INTERVAL $mam_message_live)) and \`store\` LIKE \"archive%\";" | mysql -u "$prosody_db_user" -p"$prosody_db_password"
+		log_to_file "Database garbage collection was successful."
 	fi
 }
 
@@ -220,7 +221,7 @@ clearcomp()
 		# remove variables for privacy reasons
 		unset tmp_directory logfile composition unused_accounts old_accounts junk_to_delete dbjunk_to_delete prepared_list logging host enable_unused unused_accounts_timeframe enable_old
 		unset old_accounts_timeframe enable_mam_clearing mam_message_live prosody_db_user prosody_db_password enable_http_upload http_upload_path http_upload_expire
-		exit
+		exit 0
 	fi
 
 	# removal of tmp files
