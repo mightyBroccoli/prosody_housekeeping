@@ -168,7 +168,7 @@ filter_ignored_accounts()
 	# remove spaces and empty lines
 	# sort and remove duplicates
 	sed 's/ //g' $ignored_accounts | sed '/^$/d' | sort | uniq > $tmp_directory/ignored_accounts_prepared.txt
-	
+
 	# copy newly edited ignore list
 	mv $tmp_directory/ignored_accounts_prepared.txt $ignored_accounts
 
@@ -210,12 +210,14 @@ clearcomp()
 
 		# ISSUE #5
 		# workaround to list out all users deleted by this to later be removed from spectrum2 db
-		cat "$old_accounts" >> /var/backups/prosody_housekeeping_spectrum2_accounts.txt
+		if [ -s $old_accounts ]; then
+			cat "$old_accounts" >> /var/backups/prosody_housekeeping_spectrum2_accounts.txt
+		fi
 
 		# removal of tmp files
 		rm -f "$composition" "$unused_accounts" "$old_accounts" "$junk_to_delete" "$dbjunk_to_delete" "$prepared_list"
 
-		# remove variables for privacy reasons	
+		# remove variables for privacy reasons
 		unset tmp_directory logfile composition unused_accounts old_accounts junk_to_delete dbjunk_to_delete prepared_list logging host enable_unused unused_accounts_timeframe enable_old
 		unset old_accounts_timeframe enable_mam_clearing mam_message_live prosody_db_user prosody_db_password enable_http_upload http_upload_path http_upload_expire
 		exit
@@ -223,6 +225,8 @@ clearcomp()
 
 	# removal of tmp files
 	rm -f "$composition" "$unused_accounts" "$old_accounts" "$junk_to_delete" "$dbjunk_to_delete" "$prepared_list"
+
+	exit 0
 }
 
 
