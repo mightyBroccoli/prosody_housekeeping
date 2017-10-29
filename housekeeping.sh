@@ -44,16 +44,14 @@ prerun_check()
 		exit 11
 	fi
 
-	#check if tmp directory is present if not create it
+	#check if everything is present if not create it
 	if [ ! -d "$tmp_directory" ]; then
 		mkdir -p "$tmp_directory"
 	fi
 
-	# check if ignore file is present if not create an empty one
 	if [ ! -f "$ignored_accounts" ]; then
 		touch $ignored_accounts
 	fi
-
 
 	#first run check
 	# check for presents of the configfile if not exit
@@ -116,7 +114,7 @@ catch_configtest()
 		fi
 
 		if [ -s $dbjunk_to_delete ]; then
-			echo -e "MAM Entries marked for deletion: \\n$(cat $dbjunk_to_delete)\\n"
+			echo -e "MAM Entries marked for deletion: \\n$(cat $dbjunk_to_delete | wc -l)\\n"
 		fi
 		exit
 	fi
@@ -226,8 +224,6 @@ clearcomp()
 
 	# removal of tmp files
 	rm -f "$composition" "$unused_accounts" "$old_accounts" "$junk_to_delete" "$dbjunk_to_delete" "$prepared_list"
-
-	exit 0
 }
 
 
