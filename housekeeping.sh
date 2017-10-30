@@ -186,17 +186,23 @@ filter_mam_messages()
 {
 	# only run this filter if $enable_mam_clearing is set to true
 	if [ "$enable_mam_clearing" = "true" ]; then
+		# this is currently a workaround caused by the extrem slowness of prosodys own clearing mechanism
+		# filter all expired mod_mam messages from archive
+		echo "SELECT * FROM prosody.prosodyarchive WHERE \`when\` < UNIX_TIMESTAMP(DATE_SUB(curdate(),INTERVAL $mam_message_live)) and \`store\` LIKE \"archive%\";" | mysql -u "$prosody_db_user" -p"$prosody_db_password" &>> "$dbjunk_to_delete"
+
 		# catch config test
 		if [ "$1" = "--test" ]; then
-			# this is currently a workaround caused by the extrem slowness of prosodys own clearing mechanism
-			# filter all expired mod_mam messages from archive
-			echo "SELECT * FROM prosody.prosodyarchive WHERE \`when\` < UNIX_TIMESTAMP(DATE_SUB(curdate(),INTERVAL $mam_message_live)) and \`store\` LIKE \"archive%\";" | mysql -u "$prosody_db_user" -p"$prosody_db_password" &>> "$dbjunk_to_delete"
 			return 0
 		fi
+
 		# this is currently a workaround caused by the extrem slowness of prosodys own clearing mechanism
 		# delete all expired mod_mam messages from archive
 		echo "DELETE FROM prosody.prosodyarchive WHERE \`when\` < UNIX_TIMESTAMP(DATE_SUB(curdate(),INTERVAL $mam_message_live)) and \`store\` LIKE \"archive%\";" | mysql -u "$prosody_db_user" -p"$prosody_db_password"
-		log_to_file "Database garbage collection was successful."
+
+		# only log this if garbage collection actually deleted stuff
+		if [ -s $dbjunk_to_delete ]; then
+			log_to_file "MAM garbage collection removed $(cat $dbjunk_to_delete | wc -l) lines from the database."
+		fi
 	fi
 }
 
@@ -229,7 +235,7 @@ clearcomp()
 
 prepare_execution()
 {
-	if [ -s $unused_accounts ]; then
+	if [ -s "$unused_accounts" ]; then
 		# prepare selected user list to be removed
 		sed -e 's/^/prosodyctl deluser /' "$unused_accounts" >> "$prepared_list"
 
@@ -241,7 +247,7 @@ prepare_execution()
 		fi
 	fi
 
-	if [ -s $old_accounts ]; then
+	if [ -s "$old_accounts" ]; then
 		# prepare selected user list to be removed
 		sed -e 's/^/prosodyctl deluser /'  "$old_accounts" >> "$prepared_list"
 
@@ -253,7 +259,7 @@ prepare_execution()
 		fi
 	fi
 
-	if [ -s $junk_to_delete ]; then
+	if [ -s "$junk_to_delete" ]; then
 		# prepare folder list to be removed
 		sed -e 's/^/rm -rf /' "$junk_to_delete" >> "$prepared_list"
 
@@ -261,7 +267,7 @@ prepare_execution()
 			# read the files line by line and prepend and append some info
 			while read -r line; do
 				log_to_file "$(echo -e "$line" | sed -e 's/^/Folder: "/' | sed 's/$/" has been marked for removal./')"
-			done < "$old_accounts"
+			done < "$junk_to_delete"
 		fi
 	fi
 }
