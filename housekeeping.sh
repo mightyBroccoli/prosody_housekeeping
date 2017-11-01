@@ -211,7 +211,9 @@ clearcomp()
 {
 	if [ "$1" = "-removal" ]; then
 		# run the created script to delete the selected accounts
-		bash "$prepared_list"
+		if [ -s $prepared_list ]; then
+			bash "$prepared_list"
+		fi
 
 		# ISSUE #5
 		# workaround to list out all users deleted by this to later be removed from spectrum2 db
