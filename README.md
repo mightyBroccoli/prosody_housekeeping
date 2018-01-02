@@ -1,3 +1,5 @@
+[![Codacy Badge](https://api.codacy.com/project/badge/Grade/a44ab3c7c76d46cd93e135be9d4e1d12)](https://www.codacy.com/app/nico.wellpott/prosody_housekeeping?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=mightyBroccoli/prosody_housekeeping&amp;utm_campaign=Badge_Grade)
+
 # Prosody housekeeping
 
 This script is designed to fight of unnecessary database space and junk.
