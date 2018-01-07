@@ -114,7 +114,7 @@ catch_configtest()
 		fi
 
 		if [ -s $dbjunk_to_delete ]; then
-			echo -e "MAM Entries marked for deletion: \\n$(cat $dbjunk_to_delete | wc -l)\\n"
+			echo -e "MAM Entries marked for deletion: \\n$(wc -l $dbjunk_to_delete)\\n"
 		fi
 		exit
 	fi
@@ -201,7 +201,7 @@ filter_mam_messages()
 
 		# only log this if garbage collection actually deleted stuff
 		if [ -s $dbjunk_to_delete ]; then
-			log_to_file "MAM garbage collection removed $(cat $dbjunk_to_delete | wc -l) lines from the database."
+			log_to_file "MAM garbage collection removed $(wc -l $dbjunk_to_delete) lines from the database."
 		fi
 	fi
 }
