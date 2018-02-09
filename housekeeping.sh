@@ -57,11 +57,11 @@ prerun_check()
 	# check for presents of the configfile if not exit
 	if [ ! -f "$configfile" ]; then
 		if [ -f "$backupconf" ]; then
-			log_to_file "$(echo "no config inside $tmp_directory using $backupconf")"
+			log_to_file "no config inside $tmp_directory using $backupconf"
 			cp "$backupconf" "$configfile"
 		else
 			#config file is not present
-			log_to_file "$(echo "no config file has been set. copy the sample config file to $configfile")"
+			log_to_file "no config file has been set. copy the sample config file to $configfile"
 			exit 10
 		fi
 	else
@@ -76,6 +76,8 @@ prerun_check()
 	fi
 
 	# source the config file
+	# shellcheck source=$tmp_directory/.user.config
+	# shellcheck disable=SC1091
 	source  $configfile
 
 	# clear env
@@ -102,15 +104,15 @@ catch_configtest()
 
 		# Only present files if they are present
 		if [ -s $unused_accounts ]; then
-			echo -e "Registration expired: \\n$(cat $unused_accounts)\\n"
+			echo -e "Registration expired: \\n$unused_accounts\\n"
 		fi
 
 		if [ -s $old_accounts ]; then
-			echo -e "unused Accounts: \\n$(cat $old_accounts)\\n"
+			echo -e "unused Accounts: \\n$old_accounts)\\n"
 		fi
 
 		if [ -s $junk_to_delete ]; then
-			echo -e "expired HTTP_Upload Folders: \\n$(cat $junk_to_delete)\\n"
+			echo -e "expired HTTP_Upload Folders: \\n$junk_to_delete\\n"
 		fi
 
 		if [ -s $dbjunk_to_delete ]; then
