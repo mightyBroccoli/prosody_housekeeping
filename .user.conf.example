@@ -5,7 +5,7 @@
 logging=true
 #
 # define hosts to run this script on
-host="magicbroccoli.de"
+host=("magicbroccoli.de" "example.tld")
 #
 ## Removal of registered but unused accounts
 enable_unused=true

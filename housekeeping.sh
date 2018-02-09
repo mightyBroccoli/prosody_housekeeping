@@ -132,32 +132,36 @@ display_help()
 ###### FILTER SECTION ######
 filter_unused_accounts()
 {
-	# only run this filter if its enabled
-	if [ "$enable_unused" = "true" ]; then
-		# filter all registered but not logged in accounts older then $unused_accounts_timeframe
-		prosodyctl mod_list_inactive "$host" "$unused_accounts_timeframe" event | grep registered | sed 's/registered//g' > "$composition"
+	for tld in "${host[@]}"; do
+		# only run this filter if its enabled
+		if [ "$enable_unused" = "true" ]; then
+			# filter all registered but not logged in accounts older then $unused_accounts_timeframe
+			prosodyctl mod_list_inactive "$tld" "$unused_accounts_timeframe" event | grep registered | sed 's/registered//g' > "$composition"
 
-		# if there are any accounts selected
-		if [ -s "$composition" ]; then
-			# filter out ignored accounts
-			filter_ignored_accounts > "$unused_accounts"
+			# if there are any accounts selected
+			if [ -s "$composition" ]; then
+				# filter out ignored accounts
+				filter_ignored_accounts > "$unused_accounts"
+			fi
 		fi
-	fi
+	done
 }
 
 filter_old_accounts()
 {
-	# only run this filter if its enabled
-	if [ "$enable_old" = "true" ]; then
-		# filter all accounts logged out $old_accounts_timeframe in the past
-		prosodyctl mod_list_inactive "$host" "$old_accounts_timeframe" event | grep logout | sed 's/logout//g' | sed 's/ //g' > "$composition"
+	for tld in "${host[@]}"; do
+		# only run this filter if its enabled
+		if [ "$enable_old" = "true" ]; then
+			# filter all accounts logged out $old_accounts_timeframe in the past
+			prosodyctl mod_list_inactive "$host" "$old_accounts_timeframe" event | grep logout | sed 's/logout//g' | sed 's/ //g' > "$composition"
 
-		# if there are any accounts selected
-		if [ -s "$composition" ]; then
-			# filter out ignored accounts
-			filter_ignored_accounts > "$old_accounts"
+			# if there are any accounts selected
+			if [ -s "$composition" ]; then
+				# filter out ignored accounts
+				filter_ignored_accounts > "$old_accounts"
+			fi
 		fi
-	fi
+	done
 }
 
 filter_ignored_accounts()
