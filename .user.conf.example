@@ -1,6 +1,9 @@
 #
 #### EXAMPLE CONFIG FILE ####
 #
+## config version
+conf_version="1.0.1"
+#
 # log results to file
 logging=true
 #

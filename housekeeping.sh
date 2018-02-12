@@ -19,6 +19,7 @@ dbjunk_to_delete=$tmp_directory/dbjunk_to_delete.txt
 prepared_list=$tmp_directory/prepared_list.txt
 
 # external config file
+script_version="1.0.1"
 configfile=$tmp_directory/.user.config
 configfile_secured=$tmp_directory/tmp.config
 backupconf=/var/backups/prosody_housekeeping.user.config
@@ -41,10 +42,12 @@ prerun_check()
 
 	if ((missing_counter > 0)); then
 		log_to_file "$(printf "Minimum %d commands are missing in PATH, aborting\\n" "$missing_counter" >&2)"
+
+		# exit code for missing commands in PATH
 		exit 11
 	fi
 
-	#check if everything is present if not create it
+	# check if everything is present if not create it
 	if [ ! -d "$tmp_directory" ]; then
 		mkdir -p "$tmp_directory"
 	fi
@@ -62,6 +65,8 @@ prerun_check()
 		else
 			#config file is not present
 			log_to_file "no config file has been set. copy the sample config file to $configfile"
+
+			# exit code for missing config file
 			exit 10
 		fi
 	else
@@ -80,6 +85,15 @@ prerun_check()
 	# shellcheck disable=SC1091
 	source  $configfile
 
+	# check if the latest config version is used to prevent bad stuff from happening
+	if [ ! "$script_version" == "$conf_version" ]; then
+		# throw error on outdated config file
+		log_to_file "Error: Your config file is outdated. Please update your config file to proceed."
+
+		# exit code for outdated config file
+		exit 2
+	fi
+
 	# clear env
 	clearcomp
 }
@@ -89,7 +103,9 @@ catch_help()
 	# catch  -h / --help
 	if [ "$1" == "-h" ] || [ "$1" == "--help" ]; then
 		display_help
-		exit
+
+		# gracefull exit
+		exit 0
 	fi
 }
 
@@ -120,6 +136,10 @@ catch_configtest()
 		fi
 		exit
 	fi
+
+	# security gracefull exit
+	# this should be unreachable, it is just here to protect userdata
+	exit 0
 }
 
 display_help()
