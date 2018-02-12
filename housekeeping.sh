@@ -134,12 +134,10 @@ catch_configtest()
 		if [ -s $dbjunk_to_delete ]; then
 			printf "MAM Entries marked for deletion:\n%i\n" "$(< $dbjunk_to_delete wc -l)"
 		fi
-		exit
-	fi
 
-	# security gracefull exit
-	# this should be unreachable, it is just here to protect userdata
-	exit 0
+		# gracefully exit the config test
+		exit 0
+	fi
 }
 
 display_help()
