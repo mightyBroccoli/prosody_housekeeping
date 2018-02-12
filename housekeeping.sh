@@ -120,19 +120,19 @@ catch_configtest()
 
 		# Only present files if they are present
 		if [ -s $unused_accounts ]; then
-			echo -e "Registration expired: \\n$unused_accounts\\n"
+			printf "Registration expired:\n%s\n" "$(<$unused_accounts)"
 		fi
 
 		if [ -s $old_accounts ]; then
-			echo -e "unused Accounts: \\n$old_accounts)\\n"
+			printf "unused Accounts:\n%s\n" "$(<$old_accounts)"
 		fi
 
 		if [ -s $junk_to_delete ]; then
-			echo -e "expired HTTP_Upload Folders: \\n$junk_to_delete\\n"
+			printf "expired HTTP_Upload Folders:\n%s\n" "$(<$junk_to_delete)"
 		fi
 
 		if [ -s $dbjunk_to_delete ]; then
-			echo -e "MAM Entries marked for deletion: \\n$(wc -l $dbjunk_to_delete)\\n"
+			printf "MAM Entries marked for deletion:\n%i\n" "$(< $dbjunk_to_delete wc -l)"
 		fi
 		exit
 	fi
