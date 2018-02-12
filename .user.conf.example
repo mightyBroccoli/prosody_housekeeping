@@ -25,8 +25,9 @@ enable_mam_clearing=false
 mam_message_live="2 MONTH"
 #
 # prosody mysql login credentials
-prosody_db_user=$(sed -n -e '/username/ s/.*\= *//p' /etc/prosody/prosody.cfg.lua | sed 's/[";]//g')
-prosody_db_password=$(sed -n -e '/password/ s/.*\= *//p' /etc/prosody/prosody.cfg.lua | sed 's/[";]//g')
+prosody_config_location="/etc/prosody/prosody.cfg.lua"
+prosody_db_user=$(grep 'sql =' -A6 $prosody_config_location | sed -n -e '/username/ s/.*\= *//p' | sed 's/[";]//g')
+prosody_db_password=$(grep 'sql =' -A6 $prosody_config_location | sed -n -e '/password/ s/.*\= *//p' | sed 's/[";]//g')
 #
 ## Removal of expired http_upload files/folders
 enable_http_upload=true
