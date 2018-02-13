@@ -225,7 +225,7 @@ filter_mam_messages()
 
 		# only log this if garbage collection actually deleted stuff
 		if [ -s $dbjunk_to_delete ]; then
-			log_to_file "MAM garbage collection removed $(wc -l $dbjunk_to_delete) lines from the database."
+			log_to_file "MAM garbage collection removed $(wc -l < $dbjunk_to_delete) lines from the database."
 		fi
 	fi
 }
