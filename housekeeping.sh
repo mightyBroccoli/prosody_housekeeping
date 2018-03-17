@@ -16,7 +16,7 @@ unused_accounts=$tmp_directory/unused_accounts.txt
 old_accounts=$tmp_directory/old_accounts.txt
 junk_to_delete=$tmp_directory/junk_to_delete.txt
 dbjunk_to_delete=$tmp_directory/dbjunk_to_delete.txt
-prepared_list=$tmp_directory/prepared_list.txt
+prepared_accounts=$tmp_directory/prepared_accounts.txt
 
 # external config file
 script_version="1.0.1"
@@ -26,6 +26,7 @@ backupconf=/var/backups/prosody_housekeeping.user.config
 
 # external ignore file
 ignored_accounts=$tmp_directory/ignored_accounts.txt
+ignore_backup=/var/backups/prosody_housekeeping.ignored_accounts.backup
 
 ###### PRE RUN FUNCTION SECTION ######
 prerun_check()
@@ -94,6 +95,20 @@ prerun_check()
 		exit 2
 	fi
 
+	# checking if ignore file is present
+	if [ ! -f "$ignored_accounts" ]; then
+		if [ -f "ignore_backup" ]; then
+			log_to_file "ignore file missing, using backup $ignore_backup"
+			cp "$ignore_backup" "ignored_accounts"
+		else
+			log_to_file "no ignore file present,creating one ..."
+			touch "$ignored_accounts"
+		fi
+	else
+		# copy ignore file to /var/backups
+		cp "$ignored_accounts" "$ignore_backup"
+	fi
+
 	# clear env
 	clearcomp
 }
@@ -120,19 +135,19 @@ catch_configtest()
 
 		# Only present files if they are present
 		if [ -s $unused_accounts ]; then
-			printf "Registration expired:\n%s\n" "$(<$unused_accounts)"
+			printf "Registration expired:\\n%s\\n" "$(<$unused_accounts)"
 		fi
 
 		if [ -s $old_accounts ]; then
-			printf "unused Accounts:\n%s\n" "$(<$old_accounts)"
+			printf "unused Accounts:\\n%s\\n" "$(<$old_accounts)"
 		fi
 
 		if [ -s $junk_to_delete ]; then
-			printf "expired HTTP_Upload Folders:\n%s\n" "$(<$junk_to_delete)"
+			printf "expired HTTP_Upload Folders:\\n%s\\n" "$(<$junk_to_delete)"
 		fi
 
 		if [ -s $dbjunk_to_delete ]; then
-			printf "MAM Entries marked for deletion:\n%i\n" "$(< $dbjunk_to_delete wc -l)"
+			printf "MAM Entries marked for deletion:\\n%i\\n" "$(< $dbjunk_to_delete wc -l)"
 		fi
 
 		# gracefully exit the config test
@@ -231,12 +246,66 @@ filter_mam_messages()
 }
 
 ###### General Functions ######
+log_to_file()
+{
+	# ghetto logging
+	echo "[$(date --rfc-3339=seconds)] - $*" >> "$logfile"
+}
+
+prepare_execution()
+{
+	if [ -s "$unused_accounts" ]; then
+		rm -f "$composition"
+		# prepare selected user list to be removed
+		while read -r line; do
+			if [ "$logging" = "true" ]; then
+				# read the files line by line and prepend and append some info
+				log_to_file "$(echo -e "$line" | sed -e 's/^/Registration expired: /')"
+			fi
+				echo "user:delete([[$line]])" >> "$composition"
+		done < "$unused_accounts"
+
+		# concatenate all accounts together for removal
+		cat "$composition" >> "$prepared_accounts"
+	fi
+
+	if [ -s "$old_accounts" ]; then
+		rm -f "$composition"
+		# prepare selected user list to be removed
+		while read -r line; do
+			if [ "$logging" = "true" ]; then
+				# read the files line by line and prepend and append some info
+				log_to_file "$(echo -e "$line" | sed -e 's/^/Account expired: /')"
+			fi
+				echo "user:delete([[$line]])" >> "$composition"
+		done < "$old_accounts"
+
+		# concatenate all accounts together for removal
+		cat "$composition" >> "$prepared_accounts"
+	fi
+}
+
 clearcomp()
 {
 	if [ "$1" = "-removal" ]; then
+		# hand the deletion to the prosody telnet interface
+		if [ -s $prepared_accounts ]; then
+			(
+			while read -r line; do
+				echo "$line"
+			done < "$prepared_accounts"
+			echo quit
+			) | nc localhost 5582 &>/dev/null
+		fi
+
 		# run the created script to delete the selected accounts
-		if [ -s $prepared_list ]; then
-			bash "$prepared_list"
+		if [ -s $junk_to_delete ]; then
+			while read -r line; do
+				if [ "$logging" = "true" ]; then
+					log_to_file "$(echo -e "$line" | sed -e 's/^/Folder: "/' | sed 's/$/" has been marked for removal./')"
+				fi
+				rm -rf "$line"
+			done < "$junk_to_delete"
 		fi
 
 		# ISSUE #5
@@ -246,63 +315,18 @@ clearcomp()
 		fi
 
 		# removal of tmp files
-		rm -f "$composition" "$unused_accounts" "$old_accounts" "$junk_to_delete" "$dbjunk_to_delete" "$prepared_list"
+		rm -f "$composition" "$unused_accounts" "$old_accounts" "$junk_to_delete" "$dbjunk_to_delete" "$prepared_accounts"
 
 		# remove variables for privacy reasons
-		unset tmp_directory logfile composition unused_accounts old_accounts junk_to_delete dbjunk_to_delete prepared_list logging host enable_unused unused_accounts_timeframe enable_old
+		unset tmp_directory logfile composition unused_accounts old_accounts junk_to_delete dbjunk_to_delete prepared_accounts logging host enable_unused unused_accounts_timeframe enable_old
 		unset old_accounts_timeframe enable_mam_clearing mam_message_live prosody_db_user prosody_db_password enable_http_upload http_upload_path http_upload_expire
 		exit 0
 	fi
 
 	# removal of tmp files
-	rm -f "$composition" "$unused_accounts" "$old_accounts" "$junk_to_delete" "$dbjunk_to_delete" "$prepared_list"
+	rm -f "$composition" "$unused_accounts" "$old_accounts" "$junk_to_delete" "$dbjunk_to_delete" "$prepared_accounts"
 }
 
-
-prepare_execution()
-{
-	if [ -s "$unused_accounts" ]; then
-		# prepare selected user list to be removed
-		sed -e 's/^/prosodyctl deluser /' "$unused_accounts" >> "$prepared_list"
-
-		if [ "$logging" = "true" ]; then
-			# read the files line by line and prepend and append some info
-			while read -r line; do
-				log_to_file "$(echo -e "$line" | sed -e 's/^/Registration expired: /')"
-			done < "$unused_accounts"
-		fi
-	fi
-
-	if [ -s "$old_accounts" ]; then
-		# prepare selected user list to be removed
-		sed -e 's/^/prosodyctl deluser /'  "$old_accounts" >> "$prepared_list"
-
-		if [ "$logging" = "true" ]; then
-			# read the files line by line and prepend and append some info
-			while read -r line; do
-				log_to_file "$(echo -e "$line" | sed -e 's/^/Account expired: /')"
-			done < "$old_accounts"
-		fi
-	fi
-
-	if [ -s "$junk_to_delete" ]; then
-		# prepare folder list to be removed
-		sed -e 's/^/rm -rf /' "$junk_to_delete" >> "$prepared_list"
-
-		if [ "$logging" = "true" ]; then
-			# read the files line by line and prepend and append some info
-			while read -r line; do
-				log_to_file "$(echo -e "$line" | sed -e 's/^/Folder: "/' | sed 's/$/" has been marked for removal./')"
-			done < "$junk_to_delete"
-		fi
-	fi
-}
-
-log_to_file()
-{
-	# ghetto logging
-	echo "[$(date --rfc-3339=seconds)] - $*" >> "$logfile"
-}
 
 ###### MAIN CODE SECTION ######
 # catch user help input
