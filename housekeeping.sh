@@ -43,6 +43,7 @@ prerun_check()
 
 	if ((missing_counter > 0)); then
 		log_to_file "$(printf "Minimum %d commands are missing in PATH, aborting\\n" "$missing_counter" >&2)"
+		printf "Minimum %d commands are missing in PATH, aborting\\n" "$missing_counter" >&2
 
 		# exit code for missing commands in PATH
 		exit 11
@@ -66,6 +67,7 @@ prerun_check()
 		else
 			#config file is not present
 			log_to_file "no config file has been set. copy the sample config file to $configfile"
+			printf "no config file has been set. copy the sample config file to $configfile"
 
 			# exit code for missing config file
 			exit 10
@@ -90,6 +92,7 @@ prerun_check()
 	if [ ! "$script_version" == "$conf_version" ]; then
 		# throw error on outdated config file
 		log_to_file "Error: Your config file is outdated. Please update your config file to proceed."
+		printf "Error: Your config file is outdated. Please update your config file to proceed."
 
 		# exit code for outdated config file
 		exit 2
